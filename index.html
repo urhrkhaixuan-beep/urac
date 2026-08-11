@@ -3768,15 +3768,21 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
 
   const OneSignal = await waitForOneSignal(12000);
   if (!OneSignal) {
-    errEl.textContent = t.notif_modal_load_error;
+    errEl.textContent = t.notif_modal_load_error + ' [debug: SDK never loaded]';
     errEl.classList.add('notif-warn');
     errEl.style.display = 'block';
     return;
   }
+  const debugLines = [];
+  function dbg(label, value) { debugLines.push(label + ': ' + value); }
   try {
+    dbg('hasUser', !!OneSignal.User);
+    dbg('hasPushSubscription', !!(OneSignal.User && OneSignal.User.PushSubscription));
+
     await OneSignal.Notifications.requestPermission();
+    dbg('permission', OneSignal.Notifications.permission);
     if (!OneSignal.Notifications.permission) {
-      errEl.textContent = t.notif_modal_denied;
+      errEl.textContent = t.notif_modal_denied + ' [debug: ' + debugLines.join(' | ') + ']';
       errEl.classList.add('notif-warn');
       errEl.style.display = 'block';
       return;
@@ -3786,30 +3792,30 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
     // UI like ours, the SDK does NOT auto-create the subscription just
     // because permission was granted; it has to be told to opt in
     // explicitly, otherwise permission succeeds but no subscription (and
-    // no dashboard subscriber) is ever created, which is exactly the bug
-    // this fixes.
+    // no dashboard subscriber) is ever created.
     try {
       await OneSignal.User.PushSubscription.optIn();
+      dbg('optIn', 'ok');
     } catch (optInErr) {
-      console.warn('OneSignal optIn() failed', optInErr);
+      dbg('optIn error', (optInErr && (optInErr.message || optInErr.toString())) || 'unknown');
     }
+    dbg('subId immediately after optIn', OneSignal.User.PushSubscription.id);
+    dbg('optedIn', OneSignal.User.PushSubscription.optedIn);
     // Wait for a real subscription id before declaring success, otherwise
     // the UI can claim "reminders on" while the OneSignal dashboard shows
     // zero subscribers.
     const subId = await waitForPushSubscriptionId(OneSignal, 8000);
+    dbg('subId after wait', subId);
     if (!subId) {
-      errEl.textContent = t.notif_modal_load_error;
+      errEl.textContent = t.notif_modal_load_error + ' [debug: ' + debugLines.join(' | ') + ']';
       errEl.classList.add('notif-warn');
       errEl.style.display = 'block';
-      console.warn('OneSignal: permission granted but no push subscription id after waiting.');
       return;
     }
     await OneSignal.User.addTag('name', name);
-    console.log('OneSignal push subscription id:', subId);
     statusEl.style.display = 'block';
   } catch (err) {
-    console.warn('OneSignal permission request failed', err);
-    errEl.textContent = t.notif_modal_load_error;
+    errEl.textContent = t.notif_modal_load_error + ' [debug: ' + debugLines.join(' | ') + ' | error: ' + ((err && (err.message || err.toString())) || 'unknown') + ']';
     errEl.classList.add('notif-warn');
     errEl.style.display = 'block';
   }
