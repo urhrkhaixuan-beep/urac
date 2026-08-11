@@ -27,7 +27,15 @@
       appId: "1a40a75c-4754-4683-a764-258f6d7d3940",
       safari_web_id: "web.onesignal.auto.5ecc7e9f-2540-4c26-bcd6-80ea5ac40604",
       notifyButton: { enable: false },
-      allowLocalhostAsSecureOrigin: true
+      allowLocalhostAsSecureOrigin: true,
+      // This site lives at a sub-path (github.io/urac/), not domain root --
+      // tell OneSignal the service worker's scope/path matches that
+      // sub-path, otherwise it silently fails to register the worker
+      // (GitHub Pages can't send the Service-Worker-Allowed header needed
+      // to widen scope past the folder the file is actually in), which
+      // blocks push subscription creation even after permission is granted.
+      serviceWorkerParam: { scope: '/urac/' },
+      serviceWorkerPath: 'OneSignalSDKWorker.js'
     });
   });
 </script>
