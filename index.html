@@ -3781,11 +3781,21 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
       errEl.style.display = 'block';
       return;
     }
-    // Browser permission being granted is NOT the same as OneSignal having
-    // actually finished creating + syncing a push subscription for this
-    // device -- wait for a real subscription id before declaring success,
-    // otherwise the UI can claim "reminders on" while the OneSignal
-    // dashboard shows zero subscribers (exactly the bug this fixes).
+    // Browser permission granted is a separate step from OneSignal actually
+    // creating a push subscription -- with a custom (non-default) prompt
+    // UI like ours, the SDK does NOT auto-create the subscription just
+    // because permission was granted; it has to be told to opt in
+    // explicitly, otherwise permission succeeds but no subscription (and
+    // no dashboard subscriber) is ever created, which is exactly the bug
+    // this fixes.
+    try {
+      await OneSignal.User.PushSubscription.optIn();
+    } catch (optInErr) {
+      console.warn('OneSignal optIn() failed', optInErr);
+    }
+    // Wait for a real subscription id before declaring success, otherwise
+    // the UI can claim "reminders on" while the OneSignal dashboard shows
+    // zero subscribers.
     const subId = await waitForPushSubscriptionId(OneSignal, 8000);
     if (!subId) {
       errEl.textContent = t.notif_modal_load_error;
