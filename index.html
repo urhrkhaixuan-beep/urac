@@ -3801,6 +3801,25 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
     }
     dbg('subId immediately after optIn', OneSignal.User.PushSubscription.id);
     dbg('optedIn', OneSignal.User.PushSubscription.optedIn);
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      dbg('sw registrations', regs.length);
+      regs.forEach((r, i) => dbg('sw[' + i + '] scope', r.scope + ' active=' + !!r.active));
+      const swReg = await navigator.serviceWorker.ready;
+      dbg('sw ready scope', swReg.scope);
+      if (swReg.pushManager) {
+        try {
+          const existingSub = await swReg.pushManager.getSubscription();
+          dbg('pushManager.getSubscription', existingSub ? existingSub.endpoint.slice(0, 40) + '...' : 'null');
+        } catch (pmErr) {
+          dbg('pushManager.getSubscription error', (pmErr && (pmErr.message || pmErr.toString())) || 'unknown');
+        }
+      } else {
+        dbg('pushManager', 'missing');
+      }
+    } catch (swErr) {
+      dbg('sw check error', (swErr && (swErr.message || swErr.toString())) || 'unknown');
+    }
     // Wait for a real subscription id before declaring success, otherwise
     // the UI can claim "reminders on" while the OneSignal dashboard shows
     // zero subscribers.
