@@ -31,6 +31,7 @@
     });
   });
 </script>
+<link rel="preconnect" href="https://cdn.onesignal.com">
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3757,7 +3758,7 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
     return;
   }
 
-  const OneSignal = await waitForOneSignal(4000);
+  const OneSignal = await waitForOneSignal(12000);
   if (!OneSignal) {
     errEl.textContent = t.notif_modal_load_error;
     errEl.classList.add('notif-warn');
