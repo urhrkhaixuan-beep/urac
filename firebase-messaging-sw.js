@@ -20,3 +20,4 @@ messaging.onBackgroundMessage((payload) => {
   };
   self.registration.showNotification(title, options);
 });
+ 
