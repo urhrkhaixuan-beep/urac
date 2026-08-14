@@ -3851,21 +3851,35 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
           }
           // If there's still no real subscription, try creating one
           // ourselves directly against the raw browser Push API (bypassing
-          // OneSignal entirely). Whatever error this throws is the actual
-          // root cause -- OneSignal's SDK may be swallowing it silently.
+          // OneSignal entirely), this time with a REAL VAPID public key
+          // (not omitted) -- this is the decisive test: if this succeeds,
+          // the phone/browser is fully capable and the problem is
+          // OneSignal-side; if it still fails, it's a deeper platform issue.
           if (!existingSub) {
             try {
+              function urlBase64ToUint8Array(base64String) {
+                const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+                const rawData = atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+                for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+                return outputArray;
+              }
+              const TEST_VAPID_PUBLIC_KEY = 'BFj39dQYfJdtBsBMIvcn4L5GNbem1SoEhVBHy9pavhTelUXdlOxdx_JX_ZMu045cWIVHNEljA_Q0bPXyE2yF0eo';
               const rawSub = await withTimeout(
-                swReg.pushManager.subscribe({ userVisibleOnly: true }),
+                swReg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(TEST_VAPID_PUBLIC_KEY),
+                }),
                 8000, 'raw subscribe timeout'
               );
               if (rawSub.ok) {
-                dbg('raw subscribe', 'ok endpoint=' + rawSub.v.endpoint.slice(0, 40) + '...');
+                dbg('raw subscribe (real key)', 'ok endpoint=' + rawSub.v.endpoint.slice(0, 40) + '...');
               } else {
-                dbg('raw subscribe', rawSub.v);
+                dbg('raw subscribe (real key)', rawSub.v);
               }
             } catch (subErr) {
-              dbg('raw subscribe error', (subErr && (subErr.name ? subErr.name + ': ' + subErr.message : subErr.toString())) || 'unknown');
+              dbg('raw subscribe (real key) error', (subErr && (subErr.name ? subErr.name + ': ' + subErr.message : subErr.toString())) || 'unknown');
             }
           }
         } else {
