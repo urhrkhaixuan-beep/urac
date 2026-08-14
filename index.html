@@ -3842,11 +3842,31 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
         const swReg = readyResult.v;
         dbg('sw ready scope', swReg.scope);
         if (swReg.pushManager) {
+          let existingSub = null;
           try {
-            const existingSub = await swReg.pushManager.getSubscription();
+            existingSub = await swReg.pushManager.getSubscription();
             dbg('pushManager.getSubscription', existingSub ? existingSub.endpoint.slice(0, 40) + '...' : 'null');
           } catch (pmErr) {
             dbg('pushManager.getSubscription error', (pmErr && (pmErr.message || pmErr.toString())) || 'unknown');
+          }
+          // If there's still no real subscription, try creating one
+          // ourselves directly against the raw browser Push API (bypassing
+          // OneSignal entirely). Whatever error this throws is the actual
+          // root cause -- OneSignal's SDK may be swallowing it silently.
+          if (!existingSub) {
+            try {
+              const rawSub = await withTimeout(
+                swReg.pushManager.subscribe({ userVisibleOnly: true }),
+                8000, 'raw subscribe timeout'
+              );
+              if (rawSub.ok) {
+                dbg('raw subscribe', 'ok endpoint=' + rawSub.v.endpoint.slice(0, 40) + '...');
+              } else {
+                dbg('raw subscribe', rawSub.v);
+              }
+            } catch (subErr) {
+              dbg('raw subscribe error', (subErr && (subErr.name ? subErr.name + ': ' + subErr.message : subErr.toString())) || 'unknown');
+            }
           }
         } else {
           dbg('pushManager', 'missing');
