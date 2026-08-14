@@ -10,14 +10,11 @@ firebase.initializeApp({
   appId: "1:363240215247:web:2836e7f685e06c05c19dba",
 });
 
-const messaging = firebase.messaging();
-
-// Handles push messages that arrive while the app is closed/backgrounded.
-messaging.onBackgroundMessage((payload) => {
-  const title = (payload.notification && payload.notification.title) || 'URAC Training';
-  const options = {
-    body: (payload.notification && payload.notification.body) || '',
-  };
-  self.registration.showNotification(title, options);
-});
- 
+// Just initializing Firebase here is enough for background push -- when a
+// message includes a "notification" payload (which is what the Firebase
+// Console's "Send test message" / campaign builder sends), the browser
+// displays it automatically. We intentionally do NOT also call
+// self.registration.showNotification() here, because doing so on top of
+// the browser's automatic display is exactly what caused each message to
+// show up twice.
+firebase.messaging();
