@@ -3771,9 +3771,36 @@ document.getElementById('notifSubmitBtn').addEventListener('click', async () => 
   }
   const debugLines = [];
   function dbg(label, value) { debugLines.push(label + ': ' + value); }
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise.then(v => ({ ok: true, v })),
+      new Promise(resolve => setTimeout(() => resolve({ ok: false, v: 'timeout after ' + ms + 'ms' }), ms))
+    ]);
+  }
   try {
     dbg('hasUser', !!OneSignal.User);
     dbg('hasPushSubscription', !!(OneSignal.User && OneSignal.User.PushSubscription));
+
+    // Independent, non-OneSignal test: can THIS browser/context register
+    // a service worker at all, right now? If this itself fails or hangs,
+    // the problem is platform-level (this device/browser mode), not
+    // anything in our OneSignal setup.
+    dbg('serviceWorker in navigator', 'serviceWorker' in navigator);
+    if ('serviceWorker' in navigator) {
+      try {
+        const rawResult = await withTimeout(
+          navigator.serviceWorker.register('/urac/OneSignalSDKWorker.js', { scope: '/urac/' }),
+          8000, 'manual register timeout'
+        );
+        if (rawResult.ok) {
+          dbg('manual register', 'ok scope=' + rawResult.v.scope);
+        } else {
+          dbg('manual register', rawResult.v);
+        }
+      } catch (rawErr) {
+        dbg('manual register error', (rawErr && (rawErr.message || rawErr.toString())) || 'unknown');
+      }
+    }
 
     await OneSignal.Notifications.requestPermission();
     dbg('permission', OneSignal.Notifications.permission);
